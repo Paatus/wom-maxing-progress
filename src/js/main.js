@@ -7,6 +7,10 @@ const app = Elm.Main.init({
 })
 
 // Change between themes manually
-app.ports.changeTheme.subscribe(function (data) {
-  window.document.documentElement.setAttribute('data-theme', data)
+app.ports.infoForJS.subscribe(function (data) {
+  switch(data.tag) {
+    case "changeTheme":
+      window.document.documentElement.setAttribute('data-theme', data)
+      break;
+  }
 })

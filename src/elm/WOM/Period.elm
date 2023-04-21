@@ -1,4 +1,4 @@
-module WOM.Period exposing (..)
+module WOM.Period exposing (formatPeriod, fromValue, toValue)
 
 import WOM.Types exposing (Period(..))
 
@@ -39,3 +39,25 @@ toValue p =
 
         Year ->
             "year"
+
+
+fromValue : String -> Period
+fromValue s =
+    case s of
+        "five_min" ->
+            Five_min
+
+        "day" ->
+            Day
+
+        "week" ->
+            Week
+
+        "month" ->
+            Month
+
+        "year" ->
+            Year
+
+        _ ->
+            Year

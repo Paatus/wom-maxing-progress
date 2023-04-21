@@ -1,4 +1,20 @@
-module WOM.Types exposing (..)
+module WOM.Types exposing
+    ( Activity(..)
+    , ActivityObj
+    , Boss(..)
+    , BossObj
+    , ComputedMetric(..)
+    , DeltaObj(..)
+    , DiffObj
+    , EHPMethod
+    , EHPObject
+    , EHPRates
+    , GainedData
+    , Period(..)
+    , Skill(..)
+    , SkillObj
+    , TopItems
+    )
 
 import Dict exposing (Dict)
 
@@ -153,6 +169,23 @@ type alias GainedData =
     , activity : Dict String ActivityObj
     , boss : Dict String BossObj
     }
+
+
+type alias EHPMethod =
+    { methodName : String
+    , rate : Int
+    , fromExp : Int
+    }
+
+
+type alias EHPObject =
+    { skill : String
+    , methods : List EHPMethod
+    }
+
+
+type alias EHPRates =
+    Dict String EHPObject
 
 
 type alias TopItems =
