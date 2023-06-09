@@ -4,9 +4,7 @@ import Axis
 import Color exposing (Color)
 import FormatNumber exposing (format)
 import Html exposing (Html)
-import Html.Attributes as HA
 import Scale exposing (BandScale, ContinuousScale, defaultBandConfig)
-import Scale.Color
 import TypedSvg exposing (g, rect, style, svg, text_)
 import TypedSvg.Attributes exposing (class, color, fill, textAnchor, transform, viewBox)
 import TypedSvg.Attributes.InPx exposing (height, width, x, y)

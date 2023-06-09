@@ -8,7 +8,7 @@ import Dict exposing (Dict)
 import FormatNumber exposing (format)
 import FormatNumber.Locales exposing (usLocale)
 import Html exposing (..)
-import Html.Attributes exposing (class, classList, href, id, name, placeholder, selected, type_, value)
+import Html.Attributes exposing (class, classList, href, name, placeholder, selected, type_, value)
 import Html.Events exposing (onInput)
 import Json.Decode
 import Json.Encode
@@ -18,10 +18,10 @@ import Svg as Svg exposing (path, svg)
 import Svg.Attributes as SvgAttr
 import Task
 import Theme exposing (dark, light)
-import Types exposing (AccountInfo, Msg(..), SkillInfo, Skills)
+import Types exposing (AccountInfo, Msg(..), Skills)
 import Url
 import WOM.API exposing (accountInfo, ehpRates, gains, getTopItems)
-import WOM.Data exposing (colors, colours, maxExp)
+import WOM.Data exposing (colors)
 import WOM.Period exposing (formatPeriod, fromValue, toValue)
 import WOM.Types exposing (Boss(..), DeltaObj(..), EHPRates, GainedData, Period(..), Skill(..), TopItems)
 import WOM.Utils exposing (getProgressPercent, percentTowardsMax, remainingExp, ttm)
@@ -93,7 +93,7 @@ searchIfUsername m =
     case m.username of
         Just name ->
             Cmd.batch
-                [ accountInfo (Debug.log "name" name) GotAccountInfo
+                [ accountInfo name GotAccountInfo
                 , ehpRates GotEHPRates
                 , gains name m.period GotGains
                 ]
@@ -204,10 +204,10 @@ maxProgressView model =
                         |> List.reverse
 
                 ttmChartData =
-                    List.map (\( val, name ) -> { value = val, label = name, color = Maybe.withDefault Color.white <| Dict.get name colours }) ttms
+                    List.map (\( val, name ) -> { value = val, label = name, color = Maybe.withDefault Color.white <| Dict.get name colors }) ttms
 
                 percentDoneChartData =
-                    List.map (\( val, name ) -> { value = val, label = name, color = Maybe.withDefault Color.white <| Dict.get name colours }) skillProgress
+                    List.map (\( val, name ) -> { value = val, label = name, color = Maybe.withDefault Color.white <| Dict.get name colors }) skillProgress
             in
             section []
                 [ maxProgressStats model
@@ -232,22 +232,9 @@ maxProgressStats model =
                 remainingExp =
                     WOM.Utils.remainingExp account.skills
 
-                remainingSkills : Dict String SkillInfo
-                remainingSkills =
-                    Dict.filter (\_ v -> v.level < 99) account.skills
-
                 percentDone : Float
                 percentDone =
                     percentTowardsMax account.skills
-
-                getSkillExp : DeltaObj -> Maybe Int
-                getSkillExp do =
-                    case do of
-                        SkillDelta sd ->
-                            Just sd.experience.gained
-
-                        _ ->
-                            Nothing
 
                 gained : Maybe GainedData
                 gained =
@@ -270,7 +257,7 @@ maxProgressStats model =
                 getRemainingLevels skills =
                     let
                         totalLevel =
-                            Dict.filter (\k v -> k == "overall") skills
+                            Dict.filter (\k _ -> k == "overall") skills
                                 |> Dict.map (\_ v -> v.level)
                                 |> Dict.foldl (\_ v acc -> acc + v) 0
                     in
@@ -284,36 +271,20 @@ maxProgressStats model =
                 gainedLevels =
                     Maybe.map getRemainingLevels thenSkills |> Maybe.map (\n -> remainingLevels - n) |> Maybe.map abs |> Maybe.withDefault 0
 
-                gainedMaxedSkills : Int
-                gainedMaxedSkills =
-                    let
-                        skillsThen =
-                            Maybe.map (Dict.filter (\_ v -> v.level < 99) >> Dict.size) thenSkills |> Maybe.withDefault 0
-                    in
-                    skillsThen - Dict.size remainingSkills
 
                 gainedPercent : Float
                 gainedPercent =
                     let
                         percentThen =
                             Maybe.map percentTowardsMax thenSkills |> Maybe.withDefault 0
-
-                        _ =
-                            Debug.log "thenSkills" thenSkills |> (\_ -> Debug.log "nowSkills" account.skills)
                     in
                     percentDone - percentThen
 
-                gainedExperience2 : Int
-                gainedExperience2 =
+                gainedExperience : Int
+                gainedExperience =
                     Maybe.map WOM.Utils.remainingExp thenSkills
                         |> Maybe.map (\n -> n - remainingExp)
                         |> Maybe.withDefault 0
-
-                gainedExperience : Maybe Int
-                gainedExperience =
-                    Maybe.map getTopItems gained
-                        |> Maybe.andThen .gainedExperience
-                        |> Maybe.andThen getSkillExp
 
                 gainedEHP : Float
                 gainedEHP =
@@ -354,7 +325,7 @@ maxProgressStats model =
                             , dd
                                 [ class "text-xs font-medium text-green-700"
                                 ]
-                                [ text ("-" ++ format (decimalLocale 0) (gainedExperience2 |> toFloat)) ]
+                                [ text ("-" ++ format (decimalLocale 0) (gainedExperience |> toFloat)) ]
                             , dd
                                 [ class "w-full flex-none text-3xl font-medium leading-10 tracking-tight text-white"
                                 ]
@@ -512,11 +483,7 @@ myFooter =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        UrlChanged newUrl ->
-            let
-                _ =
-                    Debug.log "newUrl:" newUrl
-            in
+        UrlChanged _ ->
             ( model, Cmd.none )
 
         SubmitUsername ->

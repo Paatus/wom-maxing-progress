@@ -1,7 +1,6 @@
 module WOM.Utils exposing (getEHPRate, getImg, getProgressPercent, imageBaseUrl, percentTowardsMax, remainingExp, ttm)
 
 import Dict exposing (Dict)
-import Types exposing (SkillInfo)
 import WOM.Data exposing (maxExp)
 import WOM.Types exposing (EHPRates, Skill(..))
 

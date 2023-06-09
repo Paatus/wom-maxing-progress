@@ -1,13 +1,13 @@
 module MainTest exposing (suite)
 
+-- import Html.Attributes as Attr
+-- import Test.Html.Event as Event
+-- import Test.Html.Query as Query
+-- import Test.Html.Selector as Html
+
 import Dict
 import Expect
-import Html.Attributes as Attr
-import Main exposing (initialModel)
 import Test exposing (Test)
-import Test.Html.Event as Event
-import Test.Html.Query as Query
-import Test.Html.Selector as Html
 import WOM.Utils exposing (percentTowardsMax)
 
 
