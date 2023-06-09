@@ -1,12 +1,12 @@
 module Types exposing (..)
 
 import Dict exposing (Dict)
-import WOM.Types exposing (Skill)
+import Http
+import WOM.Types exposing (EHPRates, GainedData)
 
 
 type Tab
-    = Gains
-    | MaxProgress
+    = MaxProgress
 
 
 type alias SkillInfo =
@@ -26,3 +26,13 @@ type alias AccountInfo =
     , exp : Int
     , skills : Skills
     }
+
+
+type Msg
+    = DurationPicked String
+    | GotGains (Result Http.Error GainedData)
+    | GotEHPRates (Result Http.Error EHPRates)
+    | GotAccountInfo (Result Http.Error AccountInfo)
+    | SearchFieldChanged String
+    | SubmitUsername
+    | UrlChanged String

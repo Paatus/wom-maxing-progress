@@ -4,6 +4,7 @@ module WOM.Types exposing
     , Boss(..)
     , BossObj
     , ComputedMetric(..)
+    , ComputedObj
     , DeltaObj(..)
     , DiffObj
     , EHPMethod
@@ -164,10 +165,18 @@ type DeltaObj
     | SkillDelta SkillObj
 
 
+type alias ComputedObj =
+    { start : Float
+    , end : Float
+    , gained : Float
+    }
+
+
 type alias GainedData =
     { skill : Dict String SkillObj
     , activity : Dict String ActivityObj
     , boss : Dict String BossObj
+    , computed : Dict String ComputedObj
     }
 
 

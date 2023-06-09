@@ -35,17 +35,11 @@ import WOM.Types
         , SkillObj
         , TopItems
         )
-import WOM.Utils exposing (toSkill)
 
 
 baseUrl : String
 baseUrl =
     "https://api.wiseoldman.net/v2"
-
-
-log : String -> JD.Decoder a -> JD.Decoder a
-log message =
-    JD.map (Debug.log message)
 
 
 skillDecoder : JD.Decoder (Dict String SkillObj)
@@ -150,12 +144,21 @@ getTopItems datta =
     }
 
 
+computedDecoder : JD.Decoder (Dict String WOM.Types.ComputedObj)
+computedDecoder =
+    JD.dict <|
+        JD.map3 WOM.Types.ComputedObj
+            (JD.at ["value", "start"] JD.float)
+            (JD.at ["value", "end"] JD.float)
+            (JD.at ["value", "gained"] JD.float)
+
 parseGains : JD.Decoder GainedData
 parseGains =
-    JD.map3 GainedData
+    JD.map4 GainedData
         (JD.at [ "data", "skills" ] skillDecoder)
         (JD.at [ "data", "activities" ] activityDecoder)
         (JD.at [ "data", "bosses" ] bossDecoder)
+        (JD.at [ "data", "computed" ] computedDecoder)
 
 
 gains : String -> Period -> (Result Http.Error GainedData -> msg) -> Cmd msg
@@ -169,11 +172,24 @@ gains username period msgType =
 parseEHPObject : JD.Decoder EHPRates
 parseEHPObject =
     let
+        decodeRate : JD.Decoder Int
+        decodeRate =
+            JD.maybe (JD.field "realRate" JD.int)
+                |> JD.andThen
+                    (\mi ->
+                        case mi of
+                            Nothing ->
+                                JD.field "rate" JD.int
+
+                            Just a ->
+                                JD.succeed a
+                    )
+
         parseMethod : JD.Decoder EHPMethod
         parseMethod =
             JD.map3 EHPMethod
                 (JD.field "description" JD.string)
-                (JD.field "rate" JD.int)
+                decodeRate
                 (JD.field "startExp" JD.int)
 
         parseRateObject : JD.Decoder EHPObject

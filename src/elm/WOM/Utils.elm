@@ -1,13 +1,14 @@
-module WOM.Utils exposing (getEHPRate, getImg, getProgressPercent, imageBaseUrl, toSkill, ttm)
+module WOM.Utils exposing (getEHPRate, getImg, getProgressPercent, imageBaseUrl, percentTowardsMax, remainingExp, ttm)
 
-import Dict
-import WOM.Types exposing (EHPMethod, EHPObject, EHPRates, Skill(..))
+import Dict exposing (Dict)
+import Types exposing (SkillInfo)
 import WOM.Data exposing (maxExp)
+import WOM.Types exposing (EHPRates, Skill(..))
 
 
 imageBaseUrl : String
 imageBaseUrl =
-    "https://wiseoldman.net/img/runescape/icons_small/"
+    "https://wiseoldman.net/img/runescape/icons/"
 
 
 getImg : String -> Maybe String
@@ -18,161 +19,6 @@ getImg s =
 
         a ->
             Just (imageBaseUrl ++ a ++ ".png")
-
-
-toString : Skill -> String
-toString skill =
-    case skill of
-        Overall ->
-            "Overall"
-
-        Attack ->
-            "Attack"
-
-        Construction ->
-            "Construction"
-
-        Agility ->
-            "Agility"
-
-        Cooking ->
-            "Cooking"
-
-        Crafting ->
-            "Crafting"
-
-        Defence ->
-            "Defence"
-
-        Strength ->
-            "Strength"
-
-        Hitpoints ->
-            "Hitpoints"
-
-        Ranged ->
-            "Ranged"
-
-        Prayer ->
-            "Prayer"
-
-        Magic ->
-            "Magic"
-
-        Woodcutting ->
-            "Woodcutting"
-
-        Fletching ->
-            "Fletching"
-
-        Fishing ->
-            "Fishing"
-
-        Firemaking ->
-            "Firemaking"
-
-        Smithing ->
-            "Smithing"
-
-        Mining ->
-            "Mining"
-
-        Herblore ->
-            "Herblore"
-
-        Thieving ->
-            "Thieving"
-
-        Slayer ->
-            "Slayer"
-
-        Farming ->
-            "Farming"
-
-        Runecrafting ->
-            "Runecrafting"
-
-        Hunter ->
-            "Hunter"
-
-
-toSkill : String -> Maybe Skill
-toSkill skill =
-    case skill of
-        "overall" ->
-            Just Overall
-
-        "attack" ->
-            Just Attack
-
-        "construction" ->
-            Just Construction
-
-        "agility" ->
-            Just Agility
-
-        "cooking" ->
-            Just Cooking
-
-        "crafting" ->
-            Just Crafting
-
-        "defence" ->
-            Just Defence
-
-        "strength" ->
-            Just Strength
-
-        "hitpoints" ->
-            Just Hitpoints
-
-        "ranged" ->
-            Just Ranged
-
-        "prayer" ->
-            Just Prayer
-
-        "magic" ->
-            Just Magic
-
-        "woodcutting" ->
-            Just Woodcutting
-
-        "fletching" ->
-            Just Fletching
-
-        "fishing" ->
-            Just Fishing
-
-        "firemaking" ->
-            Just Firemaking
-
-        "smithing" ->
-            Just Smithing
-
-        "mining" ->
-            Just Mining
-
-        "herblore" ->
-            Just Herblore
-
-        "thieving" ->
-            Just Thieving
-
-        "slayer" ->
-            Just Slayer
-
-        "farming" ->
-            Just Farming
-
-        "runecrafting" ->
-            Just Runecrafting
-
-        "hunter" ->
-            Just Hunter
-
-        _ ->
-            Nothing
 
 
 getEHPRate : EHPRates -> String -> Int -> Int
@@ -198,13 +44,73 @@ ttm rates skill currentExp =
 
     else
         let
-            remainingExp : Float
-            remainingExp =
+            remaining : Float
+            remaining =
                 maxExp - currentExp |> toFloat
         in
-        remainingExp / (getEHPRate rates skill currentExp |> toFloat)
+        remaining / (getEHPRate rates skill currentExp |> toFloat)
 
 
 getProgressPercent : Int -> Float
 getProgressPercent currentExp =
     ((currentExp |> toFloat) / (maxExp |> toFloat)) * 100
+
+
+remainingExp : Dict String { r | level : Int, experience : Int } -> Int
+remainingExp skills =
+    let
+        remainingSkills : Dict String { r | level : Int, experience : Int }
+        remainingSkills =
+            Dict.filter (\_ v -> v.level < 99) skills
+
+        maxedSkills : Int
+        maxedSkills =
+            Dict.filter (\_ v -> v.level == 99) skills |> Dict.size
+
+        totalSkills : Int
+        totalSkills =
+            Dict.size remainingSkills + maxedSkills
+
+        expNeededForMax : Int
+        expNeededForMax =
+            totalSkills * maxExp
+
+        sumExperience : String -> { r | level : Int, experience : Int } -> Int -> Int
+        sumExperience _ skill acc =
+            acc + skill.experience
+
+        expInNonMaxedSkills : Int
+        expInNonMaxedSkills =
+            Dict.foldl sumExperience 0 remainingSkills
+
+        maxedSkillsExp : Int
+        maxedSkillsExp =
+            maxedSkills * maxExp
+    in
+    expNeededForMax - (maxedSkillsExp + expInNonMaxedSkills)
+
+
+percentTowardsMax : Dict String { r | level : Int, experience : Int } -> Float
+percentTowardsMax skills =
+    let
+        remainingSkills : Int
+        remainingSkills =
+            Dict.filter (\_ v -> v.level < 99) skills |> Dict.size
+
+        maxedSkills : Int
+        maxedSkills =
+            Dict.filter (\_ v -> v.level == 99) skills |> Dict.size
+
+        totalSkills : Int
+        totalSkills =
+            remainingSkills + maxedSkills
+
+        expNeededForMax : Int
+        expNeededForMax =
+            totalSkills * maxExp
+
+        percentLeft : Float
+        percentLeft =
+            (toFloat (remainingExp skills) / toFloat expNeededForMax) * 100
+    in
+    100 - percentLeft
