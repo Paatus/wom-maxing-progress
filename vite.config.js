@@ -5,6 +5,9 @@ import viteImagemin from 'vite-plugin-imagemin'
 import viteCompression from 'vite-plugin-compression'
 
 export default defineConfig({
+  build: {
+    outDir: 'docs'
+  },
   plugins: [
     elmPlugin(),
     // ViteWebfontDownload(['https://fonts.googleapis.com/css2?family=Lexend+Deca:wght@400;500;600&display=swap']),
