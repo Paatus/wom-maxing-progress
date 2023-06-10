@@ -5,8 +5,9 @@ import viteImagemin from 'vite-plugin-imagemin'
 import viteCompression from 'vite-plugin-compression'
 
 export default defineConfig({
+  base: '/wom-maxing-progress/',
   build: {
-    outDir: 'docs'
+    outDir: 'docs',
   },
   plugins: [
     elmPlugin(),
