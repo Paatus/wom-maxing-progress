@@ -10,7 +10,7 @@
     "@tailwindcss/line-clamp": "^0.4.2",
     "@tailwindcss/typography": "^0.5.8",
     "autoprefixer": "^10.4.13",
-    "elm-review": "^2.8.2",
+    "elm-review": "^2.10.2",
     "elm-test": "^0.19.1-revision10",
     "elm-tooling": "^1.10.0",
     "postcss": "^8.4.19",

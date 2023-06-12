@@ -1,4 +1,4 @@
-port module Main exposing (Model, initialModel, main)
+port module Main exposing (Model, UrlParams, main)
 
 import Accessibility.Key exposing (enter, onKeyDown)
 import BarChart
@@ -8,23 +8,22 @@ import Dict exposing (Dict)
 import FormatNumber exposing (format)
 import FormatNumber.Locales exposing (usLocale)
 import Html exposing (..)
-import Html.Attributes exposing (class, classList, href, name, placeholder, selected, type_, value)
+import Html.Attributes exposing (class, href, placeholder, selected, type_, value)
 import Html.Events exposing (onInput)
 import Json.Decode
 import Json.Encode
 import PieChart
 import Process
-import Svg as Svg exposing (path, svg)
+import Svg exposing (path, svg)
 import Svg.Attributes as SvgAttr
 import Task
-import Theme exposing (dark, light)
 import Types exposing (AccountInfo, Msg(..), Skills)
 import Url
-import WOM.API exposing (accountInfo, ehpRates, gains, getTopItems)
+import WOM.API exposing (accountInfo, ehpRates, gains)
 import WOM.Data exposing (colors)
 import WOM.Period exposing (formatPeriod, fromValue, toValue)
-import WOM.Types exposing (Boss(..), DeltaObj(..), EHPRates, GainedData, Period(..), Skill(..), TopItems)
-import WOM.Utils exposing (getProgressPercent, percentTowardsMax, remainingExp, ttm)
+import WOM.Types exposing (EHPRates, GainedData, Period(..))
+import WOM.Utils exposing (getProgressPercent, percentTowardsMax, ttm)
 
 
 locale : FormatNumber.Locales.Locale
@@ -43,11 +42,9 @@ decimalLocale decimals =
 
 
 type alias Model =
-    { theme : String
-    , username : Maybe String
+    { username : Maybe String
     , period : Period
     , gainedData : Maybe GainedData
-    , topItems : Maybe TopItems
     , accountInfo : Maybe AccountInfo
     , ehpRates : Maybe EHPRates
     }
@@ -64,18 +61,18 @@ type alias UrlParams =
 initialModel : UrlParams -> ( Model, Cmd Msg )
 initialModel params =
     let
+        period : Period
         period =
             WOM.Types.Month
 
+        username : Maybe String
         username =
             params.username
 
         initModel : Model
         initModel =
-            { theme = "dark"
-            , period = period
+            { period = period
             , gainedData = Nothing
-            , topItems = Nothing
             , username = username
             , accountInfo = Nothing
             , ehpRates = Nothing
@@ -125,7 +122,7 @@ parseUrl urlString =
 
         parseParams : Url.Url -> Maybe UrlParams
         parseParams inUrl =
-            inUrl.query |> Maybe.map queryToParamsDict |> Maybe.andThen (\d -> Just { username = Dict.get "username" d })
+            inUrl.query |> Maybe.map queryToParamsDict |> Maybe.map (\d -> { username = Dict.get "username" d })
     in
     Maybe.andThen parseParams url |> Maybe.withDefault { username = Nothing }
 
@@ -159,6 +156,7 @@ init flagsValue =
             Json.Decode.decodeValue decodeFlags flagsValue
                 |> Result.withDefault defaultFlags
 
+        params : UrlParams
         params =
             parseUrl flags.currentUrl
     in
@@ -184,40 +182,43 @@ maxProgressView model =
     case ( model.accountInfo, model.ehpRates ) of
         ( Just account, Just ehpRates ) ->
             let
+                nonMaxSkills : Dict String { experience : Int, level : Int, name : String }
                 nonMaxSkills =
                     Dict.filter (\_ v -> v.level < 99) account.skills
 
+                ttms : List (Float, String)
                 ttms =
                     Dict.map (\k v -> ( ttm ehpRates v.name v.experience, k )) nonMaxSkills
-                        |> Dict.toList
-                        |> List.map Tuple.second
+                        |> Dict.values
                         |> List.sortBy Tuple.first
                         |> List.map (Tuple.mapFirst (format locale >> String.toFloat >> Maybe.withDefault 0))
                         |> List.reverse
 
+                skillProgress : List (Float, String)
                 skillProgress =
                     Dict.map (\k v -> ( getProgressPercent v.experience, k )) nonMaxSkills
-                        |> Dict.toList
-                        |> List.map Tuple.second
+                        |> Dict.values
                         |> List.sortBy Tuple.first
                         |> List.map (Tuple.mapFirst (format locale >> String.toFloat >> Maybe.withDefault 0))
                         |> List.reverse
 
+                ttmChartData : List { value : Float, label : String, color : Color.Color }
                 ttmChartData =
                     List.map (\( val, name ) -> { value = val, label = name, color = Maybe.withDefault Color.white <| Dict.get name colors }) ttms
 
+                percentDoneChartData : List { value : Float, label : String, color : Color.Color }
                 percentDoneChartData =
                     List.map (\( val, name ) -> { value = val, label = name, color = Maybe.withDefault Color.white <| Dict.get name colors }) skillProgress
             in
             section []
                 [ maxProgressStats model
-                , section [ class "grid grid-cols-2 mx-auto max-w-7xl" ]
+                , section [ class "grid grid-cols-1 mx-auto max-w-7xl md:grid-cols-2" ]
                     [ PieChart.chart ttmChartData
                     , BarChart.chart percentDoneChartData
                     ]
                 ]
 
-        ( _, _ ) ->
+        _ ->
             section [] []
 
 
@@ -229,6 +230,7 @@ maxProgressStats model =
 
         Just account ->
             let
+                remainingExp : Int
                 remainingExp =
                     WOM.Utils.remainingExp account.skills
 
@@ -256,6 +258,7 @@ maxProgressStats model =
                 getRemainingLevels : Dict String { o | level : Int } -> Int
                 getRemainingLevels skills =
                     let
+                        totalLevel : Int
                         totalLevel =
                             Dict.filter (\k _ -> k == "overall") skills
                                 |> Dict.map (\_ v -> v.level)
@@ -271,10 +274,10 @@ maxProgressStats model =
                 gainedLevels =
                     Maybe.map getRemainingLevels thenSkills |> Maybe.map (\n -> remainingLevels - n) |> Maybe.map abs |> Maybe.withDefault 0
 
-
                 gainedPercent : Float
                 gainedPercent =
                     let
+                        percentThen : Float
                         percentThen =
                             Maybe.map percentTowardsMax thenSkills |> Maybe.withDefault 0
                     in
@@ -376,19 +379,12 @@ maxProgressStats model =
 view : Model -> Html Msg
 view model =
     let
-        colors =
-            classList
-                [ ( dark.bg, model.theme == "dark" )
-                , ( dark.text, model.theme == "dark" )
-                , ( light.bg, model.theme == "light" )
-                , ( light.text, model.theme == "light" )
-                ]
-
+        currentView : Html Msg
         currentView =
             section [] [ searchView model, maxProgressView model ]
     in
     main_
-        [ class "h-full min-h-screen flex flex-col", colors ]
+        [ class "h-full min-h-screen flex flex-col bg-gray-900 text-gray-300" ]
         [ section
             [ class "flex-1 h-full p-5 flex flex-col" ]
             [ currentView ]
@@ -398,7 +394,7 @@ view model =
 
 periodSelector : { a | period : Period } -> Html Msg
 periodSelector model =
-    select [ onInput DurationPicked, class "border-0", classList [ ( dark.bg, True ) ] ]
+    select [ onInput DurationPicked, class "border-0 bg-gray-900 text-gray-300" ]
         [ option [ value (toValue Day), selected <| model.period == Day ] [ text (formatPeriod Day) ]
         , option [ value (toValue Week), selected <| model.period == Week ] [ text (formatPeriod Week) ]
         , option [ value (toValue Month), selected <| model.period == Month ] [ text (formatPeriod Month) ]
@@ -483,11 +479,9 @@ myFooter =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        UrlChanged _ ->
-            ( model, Cmd.none )
-
         SubmitUsername ->
             let
+                infoDict : String -> Dict String String
                 infoDict name =
                     Dict.fromList [ ( "key", "username" ), ( "value", name ) ]
             in
@@ -508,9 +502,10 @@ update msg model =
 
         SearchFieldChanged name ->
             let
+                username : Maybe String
                 username =
                     if String.length name > 0 then
-                        Just name
+                              Just name
 
                     else
                         Nothing
@@ -519,6 +514,7 @@ update msg model =
 
         DurationPicked s ->
             let
+                newPeriod : Period
                 newPeriod =
                     fromValue s
             in
@@ -534,11 +530,7 @@ update msg model =
         GotGains res ->
             case res of
                 Ok data ->
-                    let
-                        top =
-                            getTopItems data
-                    in
-                    ( { model | topItems = Just top, gainedData = Just data }, Cmd.none )
+                    ( { model | gainedData = Just data }, Cmd.none )
 
                 Err _ ->
                     ( model, Cmd.none )
@@ -547,6 +539,7 @@ update msg model =
             case res of
                 Ok data ->
                     let
+                        newModel : Model
                         newModel =
                             { model | ehpRates = Just data }
                     in
@@ -559,6 +552,7 @@ update msg model =
             case res of
                 Ok data ->
                     let
+                        newModel : Model
                         newModel =
                             { model | accountInfo = Just data }
                     in
@@ -575,7 +569,7 @@ update msg model =
 
 subscriptions : Model -> Sub Msg
 subscriptions _ =
-    Sub.batch [ urlChanged UrlChanged ]
+    Sub.none
 
 
 
@@ -587,6 +581,3 @@ type alias GenericJSData =
 
 
 port infoForJS : GenericJSData -> Cmd msg
-
-
-port urlChanged : (String -> msg) -> Sub msg

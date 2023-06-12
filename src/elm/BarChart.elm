@@ -1,4 +1,4 @@
-module BarChart exposing (chart)
+module BarChart exposing (ChartData, chart)
 
 import Axis
 import Color exposing (Color)
@@ -6,7 +6,7 @@ import FormatNumber exposing (format)
 import Html exposing (Html)
 import Scale exposing (BandScale, ContinuousScale, defaultBandConfig)
 import TypedSvg exposing (g, rect, style, svg, text_)
-import TypedSvg.Attributes exposing (class, color, fill, textAnchor, transform, viewBox)
+import TypedSvg.Attributes exposing (class, fill, textAnchor, transform, viewBox)
 import TypedSvg.Attributes.InPx exposing (height, width, x, y)
 import TypedSvg.Core exposing (Svg, text)
 import TypedSvg.Types exposing (AnchorAlignment(..), Paint(..), Transform(..))

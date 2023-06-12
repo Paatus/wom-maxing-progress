@@ -1,4 +1,4 @@
-module WOM.Data exposing (..)
+module WOM.Data exposing (colors, maxExp)
 
 import Color exposing (Color, rgb255)
 import Dict exposing (Dict)

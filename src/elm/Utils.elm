@@ -1,11 +1,6 @@
-module Utils exposing (..)
+module Utils exposing (decimalLocale)
 
 import FormatNumber.Locales exposing (usLocale)
-
-
-locale : FormatNumber.Locales.Locale
-locale =
-    { usLocale | decimals = FormatNumber.Locales.Exact 2 }
 
 
 decimalLocale : Int -> FormatNumber.Locales.Locale

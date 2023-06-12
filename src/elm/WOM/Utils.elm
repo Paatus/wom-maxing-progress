@@ -1,23 +1,8 @@
-module WOM.Utils exposing (getEHPRate, getImg, getProgressPercent, imageBaseUrl, percentTowardsMax, remainingExp, ttm)
+module WOM.Utils exposing (getProgressPercent, percentTowardsMax, remainingExp, ttm)
 
 import Dict exposing (Dict)
 import WOM.Data exposing (maxExp)
-import WOM.Types exposing (EHPRates, Skill(..))
-
-
-imageBaseUrl : String
-imageBaseUrl =
-    "https://wiseoldman.net/img/runescape/icons/"
-
-
-getImg : String -> Maybe String
-getImg s =
-    case s of
-        "N/A" ->
-            Nothing
-
-        a ->
-            Just (imageBaseUrl ++ a ++ ".png")
+import WOM.Types exposing (EHPRates)
 
 
 getEHPRate : EHPRates -> String -> Int -> Int

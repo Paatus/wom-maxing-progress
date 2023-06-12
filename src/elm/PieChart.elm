@@ -1,4 +1,4 @@
-module PieChart exposing (chart)
+module PieChart exposing (ChartData, chart)
 
 import Array exposing (Array)
 import Color exposing (Color)
@@ -39,6 +39,7 @@ type alias ChartData =
 legend : List ChartData -> Html msg
 legend model =
     let
+        items : List (Html msg)
         items =
             List.map
                 (\{ label, color } ->
@@ -63,6 +64,7 @@ view model =
         pieData =
             model |> List.map .value |> Shape.pie { defaultPieConfig | outerRadius = radius, cornerRadius = 5, padRadius = 50, padAngle = 0.1, innerRadius = radius - 100 }
 
+        arr : Array ChartData
         arr =
             Array.fromList model
 
@@ -82,7 +84,7 @@ view model =
                     [ text (format (decimalLocale 1) (Array.get index arr |> Maybe.map .value |> Maybe.withDefault 0) ++ " h") ]
                 ]
     in
-    section [ class "flex items-center sm:flex-row flex-col" ]
+    section [ class "flex items-center flex-row" ]
         [ legend model
         , svg [ viewBox 0 0 viewBoxWidth viewBoxHeight ]
             [ TypedSvg.style [] [ text """
