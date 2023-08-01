@@ -19,13 +19,8 @@ app.ports.infoForJS.subscribe(function (message) {
       url.searchParams.set(data.key, data.value);
 
       window.history.pushState([], "", url);
-      app.ports.urlChanged.send(location.href);
       break;
     default:
       console.log(message);
   }
 })
-
-window.addEventListener('popstate', () => {
-  app.ports.urlChanged.send(location.href);
-});

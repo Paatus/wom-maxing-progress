@@ -177,6 +177,15 @@ main =
 -- VIEW
 
 
+congratzView : List (Html msg)
+congratzView =
+    [ div [ class "text-center col-span-2 font-medium text-3xl" ]
+        [ text
+            "Congratulations, now go do something exciting!"
+        ]
+    ]
+
+
 maxProgressView : Model -> Html msg
 maxProgressView model =
     case ( model.accountInfo, model.ehpRates ) of
@@ -186,36 +195,49 @@ maxProgressView model =
                 nonMaxSkills =
                     Dict.filter (\_ v -> v.level < 99) account.skills
 
-                ttms : List (Float, String)
-                ttms =
-                    Dict.map (\k v -> ( ttm ehpRates v.name v.experience, k )) nonMaxSkills
-                        |> Dict.values
-                        |> List.sortBy Tuple.first
-                        |> List.map (Tuple.mapFirst (format locale >> String.toFloat >> Maybe.withDefault 0))
-                        |> List.reverse
+                isMaxed : Bool
+                isMaxed =
+                    Dict.size nonMaxSkills == 0
 
-                skillProgress : List (Float, String)
-                skillProgress =
-                    Dict.map (\k v -> ( getProgressPercent v.experience, k )) nonMaxSkills
-                        |> Dict.values
-                        |> List.sortBy Tuple.first
-                        |> List.map (Tuple.mapFirst (format locale >> String.toFloat >> Maybe.withDefault 0))
-                        |> List.reverse
+                contents : List (Html msg)
+                contents =
+                    if isMaxed then
+                        congratzView
 
-                ttmChartData : List { value : Float, label : String, color : Color.Color }
-                ttmChartData =
-                    List.map (\( val, name ) -> { value = val, label = name, color = Maybe.withDefault Color.white <| Dict.get name colors }) ttms
+                    else
+                        let
+                            ttms : List ( Float, String )
+                            ttms =
+                                Dict.map (\k v -> ( ttm ehpRates v.name v.experience, k )) nonMaxSkills
+                                    |> Dict.values
+                                    |> List.sortBy Tuple.first
+                                    |> List.map (Tuple.mapFirst (format locale >> String.toFloat >> Maybe.withDefault 0))
+                                    |> List.reverse
 
-                percentDoneChartData : List { value : Float, label : String, color : Color.Color }
-                percentDoneChartData =
-                    List.map (\( val, name ) -> { value = val, label = name, color = Maybe.withDefault Color.white <| Dict.get name colors }) skillProgress
+                            skillProgress : List ( Float, String )
+                            skillProgress =
+                                Dict.map (\k v -> ( getProgressPercent v.experience, k )) nonMaxSkills
+                                    |> Dict.values
+                                    |> List.sortBy Tuple.first
+                                    |> List.map (Tuple.mapFirst (format locale >> String.toFloat >> Maybe.withDefault 0))
+                                    |> List.reverse
+
+                            ttmChartData : List { value : Float, label : String, color : Color.Color }
+                            ttmChartData =
+                                List.map (\( val, name ) -> { value = val, label = name, color = Maybe.withDefault Color.white <| Dict.get name colors }) ttms
+
+                            percentDoneChartData : List { value : Float, label : String, color : Color.Color }
+                            percentDoneChartData =
+                                List.map (\( val, name ) -> { value = val, label = name, color = Maybe.withDefault Color.white <| Dict.get name colors }) skillProgress
+                        in
+                        [ PieChart.chart ttmChartData
+                        , BarChart.chart percentDoneChartData
+                        ]
             in
             section []
                 [ maxProgressStats model
                 , section [ class "grid grid-cols-1 mx-auto max-w-7xl md:grid-cols-2" ]
-                    [ PieChart.chart ttmChartData
-                    , BarChart.chart percentDoneChartData
-                    ]
+                    contents
                 ]
 
         _ ->
@@ -378,16 +400,15 @@ maxProgressStats model =
 
 view : Model -> Html Msg
 view model =
-    let
-        currentView : Html Msg
-        currentView =
-            section [] [ searchView model, maxProgressView model ]
-    in
     main_
         [ class "h-full min-h-screen flex flex-col bg-gray-900 text-gray-300" ]
         [ section
             [ class "flex-1 h-full p-5 flex flex-col" ]
-            [ currentView ]
+            [ section []
+                [ searchView model
+                , maxProgressView model
+                ]
+            ]
         , myFooter
         ]
 
@@ -505,7 +526,7 @@ update msg model =
                 username : Maybe String
                 username =
                     if String.length name > 0 then
-                              Just name
+                        Just name
 
                     else
                         Nothing
