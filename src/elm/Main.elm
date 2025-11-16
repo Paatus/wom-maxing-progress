@@ -356,7 +356,10 @@ maxProgressStats model =
 
                                         Nothing ->
                                             -- This shouldn't happen if keys match.
-                                            Debug.todo ("Missing rate for " ++ key)
+                                            { name = key
+                                            , expGained = gainedExp
+                                            , expRate = 0
+                                            }
                                 )
                                 gainedDict
 
@@ -500,7 +503,6 @@ newlyReleasedSkillsNoticeView model =
                 skillsWithoutExp =
                     acc.skills
                         |> Dict.toList
-                        |> Debug.log "LISTA"
                         |> List.filter
                             (\n ->
                                 Tuple.second n
@@ -517,9 +519,6 @@ newlyReleasedSkillsNoticeView model =
                 noticeMsg : List (Html Msg)
                 noticeMsg =
                     List.map (\n -> h1 [] [ text (n ++ " is not yet included, as it is not yet released") ]) skillNames
-
-                _ =
-                    Debug.log "ASDF" skillNames
             in
             if hasSkillsWithoutRates then
                 section [ class "w-full items-center text-center pt-12" ] (text "Note:" :: noticeMsg)
