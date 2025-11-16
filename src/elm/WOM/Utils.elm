@@ -1,6 +1,7 @@
-module WOM.Utils exposing (getProgressPercent, percentTowardsMax, remainingExp, ttm)
+module WOM.Utils exposing (getEHPRate, getProgressPercent, hasEhpRate, percentTowardsMax, releasedSkills, remainingExp, ttm)
 
 import Dict exposing (Dict)
+import Types exposing (Skills)
 import WOM.Data exposing (maxExp)
 import WOM.Types exposing (EHPRates)
 
@@ -19,6 +20,16 @@ getEHPRate rates skill exp =
 
         Nothing ->
             -1
+
+
+hasEhpRate : EHPRates -> String -> Bool
+hasEhpRate rates skillName =
+    case Dict.get skillName rates of
+        Just _ ->
+            True
+
+        Nothing ->
+            False
 
 
 ttm : EHPRates -> String -> Int -> Float
@@ -40,12 +51,18 @@ getProgressPercent currentExp =
     ((currentExp |> toFloat) / (maxExp |> toFloat)) * 100
 
 
+releasedSkills : Skills -> Skills
+releasedSkills =
+    Dict.filter (\_ v -> v.experience >= 0)
+
+
 remainingExp : Dict String { r | level : Int, experience : Int } -> Int
 remainingExp skills =
     let
         remainingSkills : Dict String { r | level : Int, experience : Int }
         remainingSkills =
             Dict.filter (\_ v -> v.level < 99) skills
+                |> Dict.filter (\_ v -> v.experience >= 0)
 
         maxedSkills : Int
         maxedSkills =

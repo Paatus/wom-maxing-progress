@@ -23,7 +23,7 @@ import WOM.API exposing (accountInfo, ehpRates, gains)
 import WOM.Data exposing (colors)
 import WOM.Period exposing (formatPeriod, fromValue, toValue)
 import WOM.Types exposing (EHPRates, GainedData, Period(..))
-import WOM.Utils exposing (getProgressPercent, percentTowardsMax, ttm)
+import WOM.Utils exposing (getProgressPercent, hasEhpRate, percentTowardsMax, releasedSkills, ttm)
 
 
 locale : FormatNumber.Locales.Locale
@@ -194,6 +194,7 @@ maxProgressView model =
                 nonMaxSkills : Dict String { experience : Int, level : Int, name : String }
                 nonMaxSkills =
                     Dict.filter (\_ v -> v.level < 99) account.skills
+                        |> Dict.filter (\_ v -> hasEhpRate ehpRates v.name)
 
                 isMaxed : Bool
                 isMaxed =
@@ -246,19 +247,29 @@ maxProgressView model =
 
 maxProgressStats : Model -> Html msg
 maxProgressStats model =
-    case model.accountInfo of
-        Nothing ->
-            section [] [ h1 [] [] ]
-
-        Just account ->
+    case ( model.accountInfo, model.ehpRates ) of
+        ( Just account, Just ehpRates ) ->
             let
+                allSkills =
+                    releasedSkills account.skills
+
                 remainingExp : Int
                 remainingExp =
-                    WOM.Utils.remainingExp account.skills
+                    WOM.Utils.remainingExp nonMaxSkills
+
+                nonMaxSkills : Dict String { experience : Int, level : Int, name : String }
+                nonMaxSkills =
+                    Dict.filter (\_ v -> v.level < 99) allSkills
+
+                time_to_max : Float
+                time_to_max =
+                    Dict.map (\k v -> ( ttm ehpRates v.name v.experience, k )) nonMaxSkills
+                        |> Dict.values
+                        |> List.foldl (\v acc -> acc + Tuple.first v) 0
 
                 percentDone : Float
                 percentDone =
-                    percentTowardsMax account.skills
+                    percentTowardsMax allSkills
 
                 gained : Maybe GainedData
                 gained =
@@ -276,6 +287,7 @@ maxProgressStats model =
                                     }
                                 )
                             )
+                        |> Maybe.map (Dict.filter (\_ v -> v.experience >= 0))
 
                 getRemainingLevels : Dict String { o | level : Int } -> Int
                 getRemainingLevels skills =
@@ -285,12 +297,18 @@ maxProgressStats model =
                             Dict.filter (\k _ -> k == "overall") skills
                                 |> Dict.map (\_ v -> v.level)
                                 |> Dict.foldl (\_ v acc -> acc + v) 0
+
+                        maxedLevel : Int
+                        maxedLevel =
+                            Dict.filter (\k _ -> k /= "overall") skills
+                                |> Dict.map (\_ _ -> 99)
+                                |> Dict.foldl (\_ v acc -> acc + v) 0
                     in
-                    2277 - totalLevel
+                    maxedLevel - totalLevel
 
                 remainingLevels : Int
                 remainingLevels =
-                    getRemainingLevels account.skills
+                    getRemainingLevels allSkills
 
                 gainedLevels : Int
                 gainedLevels =
@@ -311,9 +329,60 @@ maxProgressStats model =
                         |> Maybe.map (\n -> n - remainingExp)
                         |> Maybe.withDefault 0
 
-                gainedEHP : Float
-                gainedEHP =
-                    Maybe.map .computed gained |> Maybe.andThen (Dict.get "ehp") |> Maybe.map .gained |> Maybe.withDefault 0
+                nonMaxedSkillsEHPGained =
+                    let
+                        skillGainedExp : Dict String Float
+                        skillGainedExp =
+                            Dict.values nonMaxSkills
+                                |> List.map getSkillGainedExp
+                                |> Dict.fromList
+
+                        skillEHPRates : Dict String Int
+                        skillEHPRates =
+                            Dict.values nonMaxSkills
+                                |> List.map (\n -> Tuple.pair n.name (WOM.Utils.getEHPRate ehpRates n.name n.experience))
+                                |> Dict.fromList
+
+                        mergeExp :
+                            Dict String Float
+                            -> Dict String Int
+                            -> Dict String { name : String, expGained : Float, expRate : Int }
+                        mergeExp gainedDict rateDict =
+                            Dict.map
+                                (\key gainedExp ->
+                                    case Dict.get key rateDict of
+                                        Just rate ->
+                                            { name = key, expGained = gainedExp, expRate = rate }
+
+                                        Nothing ->
+                                            -- This shouldn't happen if keys match.
+                                            Debug.todo ("Missing rate for " ++ key)
+                                )
+                                gainedDict
+
+                        ehpGained =
+                            let
+                                merged =
+                                    mergeExp skillGainedExp skillEHPRates
+
+                                calcEhp : { name : String, expGained : Float, expRate : Int } -> Float
+                                calcEhp rateInfo =
+                                    rateInfo.expGained / toFloat rateInfo.expRate
+                            in
+                            Dict.map (\_ v -> calcEhp v) merged
+                                |> Dict.foldl (\_ acc v -> acc + v) 0
+                    in
+                    ehpGained
+
+                getSkillGainedExp : { experience : Int, level : Int, name : String } -> ( String, Float )
+                getSkillGainedExp skill =
+                    Maybe.map .skill gained
+                        |> Maybe.andThen (Dict.get skill.name)
+                        |> Maybe.map .experience
+                        |> Maybe.map .gained
+                        |> Maybe.withDefault 0
+                        |> toFloat
+                        |> Tuple.pair skill.name
             in
             div
                 [ class "bg-gray-900"
@@ -366,11 +435,17 @@ maxProgressStats model =
                             , dd
                                 [ class "text-xs font-medium text-green-700"
                                 ]
-                                [ text ("-" ++ format locale gainedEHP ++ " hours") ]
+                                [ text
+                                    ("-"
+                                        ++ format locale
+                                            nonMaxedSkillsEHPGained
+                                        ++ " hours"
+                                    )
+                                ]
                             , dd
                                 [ class "w-full flex-none text-3xl font-medium leading-10 tracking-tight text-white"
                                 ]
-                                [ text <| format (decimalLocale 1) account.ttm
+                                [ text <| format (decimalLocale 1) time_to_max
                                 , span
                                     [ class "ml-1 text-sm text-gray-400"
                                     ]
@@ -397,6 +472,9 @@ maxProgressStats model =
                     ]
                 ]
 
+        _ ->
+            section [] [ h1 [] [] ]
+
 
 view : Model -> Html Msg
 view model =
@@ -407,10 +485,50 @@ view model =
             [ section []
                 [ searchView model
                 , maxProgressView model
+                , newlyReleasedSkillsNoticeView model
                 ]
             ]
         , myFooter
         ]
+
+
+newlyReleasedSkillsNoticeView : Model -> Html Msg
+newlyReleasedSkillsNoticeView model =
+    case model.accountInfo of
+        Just acc ->
+            let
+                skillsWithoutExp =
+                    acc.skills
+                        |> Dict.toList
+                        |> Debug.log "LISTA"
+                        |> List.filter
+                            (\n ->
+                                Tuple.second n
+                                    |> .experience
+                                    |> (\a -> a < 0)
+                            )
+
+                skillNames =
+                    List.map Tuple.first skillsWithoutExp
+
+                hasSkillsWithoutRates =
+                    List.length skillsWithoutExp > 0
+
+                noticeMsg : List (Html Msg)
+                noticeMsg =
+                    List.map (\n -> h1 [] [ text (n ++ " is not yet included, as it is not yet released") ]) skillNames
+
+                _ =
+                    Debug.log "ASDF" skillNames
+            in
+            if hasSkillsWithoutRates then
+                section [ class "w-full items-center text-center pt-12" ] (text "Note:" :: noticeMsg)
+
+            else
+                section [] []
+
+        _ ->
+            section [] []
 
 
 periodSelector : { a | period : Period } -> Html Msg
