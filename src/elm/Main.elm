@@ -47,6 +47,7 @@ type alias Model =
     , gainedData : Maybe GainedData
     , accountInfo : Maybe AccountInfo
     , ehpRates : Maybe EHPRates
+    , currentYear : Int
     }
 
 
@@ -58,8 +59,8 @@ type alias UrlParams =
     { username : Maybe String }
 
 
-initialModel : UrlParams -> ( Model, Cmd Msg )
-initialModel params =
+initialModel : UrlParams -> Int -> ( Model, Cmd Msg )
+initialModel params currentYear =
     let
         period : Period
         period =
@@ -76,6 +77,7 @@ initialModel params =
             , username = username
             , accountInfo = Nothing
             , ehpRates = Nothing
+            , currentYear = currentYear
             }
 
         t : Task.Task x Model
@@ -105,12 +107,13 @@ searchIfUsername m =
 
 type alias Flags =
     { currentUrl : String
+    , currentYear : Int
     }
 
 
 defaultFlags : Flags
 defaultFlags =
-    { currentUrl = "/" }
+    { currentUrl = "/", currentYear = 0 }
 
 
 parseUrl : String -> UrlParams
@@ -148,8 +151,9 @@ init flagsValue =
     let
         decodeFlags : Json.Decode.Decoder Flags
         decodeFlags =
-            Json.Decode.map Flags <|
-                Json.Decode.field "currentUrl" Json.Decode.string
+            Json.Decode.map2 Flags
+                (Json.Decode.field "currentUrl" Json.Decode.string)
+                (Json.Decode.field "currentYear" Json.Decode.int)
 
         flags : Flags
         flags =
@@ -160,7 +164,7 @@ init flagsValue =
         params =
             parseUrl flags.currentUrl
     in
-    initialModel params
+    initialModel params flags.currentYear
 
 
 main : Program Json.Decode.Value Model Msg
@@ -491,7 +495,7 @@ view model =
                 , newlyReleasedSkillsNoticeView model
                 ]
             ]
-        , myFooter
+        , myFooter model
         ]
 
 
@@ -582,8 +586,8 @@ searchView model =
         ]
 
 
-myFooter : Html msg
-myFooter =
+myFooter : Model -> Html msg
+myFooter model =
     footer
         [ class "bg-gray-800 flex-none"
         ]
@@ -604,7 +608,7 @@ myFooter =
                 [ p
                     [ class "text-center text-xs leading-5 text-gray-500"
                     ]
-                    [ text "© 2023 Pontus Hjortskog. All rights reserved." ]
+                    [ text <| "© " ++ String.fromInt model.currentYear ++ " Pontus Hjortskog. All rights reserved." ]
                 ]
             ]
         ]

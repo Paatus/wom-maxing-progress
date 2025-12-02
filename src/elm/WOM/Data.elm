@@ -35,4 +35,5 @@ colors =
         , ( "runecraft", rgb255 170 141 26 )
         , ( "hunter", rgb255 92 89 65 )
         , ( "construction", rgb255 130 116 95 )
+        , ( "sailing", rgb255 11 165 157 )
         ]

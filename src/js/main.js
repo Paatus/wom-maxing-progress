@@ -6,6 +6,7 @@ const app = Elm.Main.init({
   node: document.querySelector('main'),
   flags: {
     currentUrl: location.href,
+    currentYear: new Date().getFullYear(),
   }
 })
 
