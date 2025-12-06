@@ -1,4 +1,4 @@
-module PieChart exposing (ChartData, chart)
+module PieChart exposing (PieChartData, chart)
 
 import Array exposing (Array)
 import Color exposing (Color)
@@ -7,6 +7,7 @@ import Html exposing (Html, div, li, section, span, ul)
 import Html.Attributes exposing (class, style)
 import Path
 import Shape exposing (defaultPieConfig)
+import String exposing (fromInt)
 import TypedSvg exposing (g, svg, text_)
 import TypedSvg.Attributes exposing (dy, fill, textAnchor, transform, viewBox)
 import TypedSvg.Core exposing (Svg, text)
@@ -29,31 +30,40 @@ radius =
     min viewBoxWidth viewBoxHeight / 2
 
 
-type alias ChartData =
+type alias PieChartData =
     { label : String
+    , level : Int
     , value : Float
     , color : Color
     }
 
 
-legend : List ChartData -> Html msg
+legend : List PieChartData -> Html msg
 legend model =
     let
         items : List (Html msg)
         items =
             List.map
-                (\{ label, color } ->
+                (\{ label, color, level } ->
                     li [ class "flex items-center" ]
                         [ div [ class "rounded-full w-3 h-3 content-['']", style "background-color" (Color.toCssString color) ] []
-                        , span [ class "ml-2" ] [ text label ]
+                        , span [ class "ml-2" ]
+                            [ text
+                                (label
+                                    ++ (" ("
+                                            ++ fromInt level
+                                            ++ ")"
+                                       )
+                                )
+                            ]
                         ]
                 )
                 model
     in
-    ul [] items
+    ul [ class "flex flex-col w-64" ] items
 
 
-view : List ChartData -> Html msg
+view : List PieChartData -> Html msg
 view model =
     let
         colors : Array Color
@@ -64,7 +74,7 @@ view model =
         pieData =
             model |> List.map .value |> Shape.pie { defaultPieConfig | outerRadius = radius, cornerRadius = 5, padRadius = 50, padAngle = 0.1, innerRadius = radius - 100 }
 
-        arr : Array ChartData
+        arr : Array PieChartData
         arr =
             Array.fromList model
 
@@ -102,6 +112,6 @@ view model =
         ]
 
 
-chart : List ChartData -> Html msg
+chart : List PieChartData -> Html msg
 chart data =
     view data

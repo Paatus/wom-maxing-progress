@@ -23,7 +23,7 @@ import WOM.API exposing (accountInfo, ehpRates, gains)
 import WOM.Data exposing (colors)
 import WOM.Period exposing (formatPeriod, fromValue, toValue)
 import WOM.Types exposing (EHPRates, GainedData, Period(..))
-import WOM.Utils exposing (getProgressPercent, hasEhpRate, percentTowardsMax, releasedSkills, ttm)
+import WOM.Utils exposing (getProgressPercent, hasEhpRate, normalizedSkills, percentTowardsMax, ttm)
 
 
 locale : FormatNumber.Locales.Locale
@@ -227,9 +227,20 @@ maxProgressView model =
                                     |> List.map (Tuple.mapFirst (format locale >> String.toFloat >> Maybe.withDefault 0))
                                     |> List.reverse
 
-                            ttmChartData : List { value : Float, label : String, color : Color.Color }
+                            ttmChartData : List PieChart.PieChartData
                             ttmChartData =
-                                List.map (\( val, name ) -> { value = val, label = name, color = Maybe.withDefault Color.white <| Dict.get name colors }) ttms
+                                List.map
+                                    (\( val, name ) ->
+                                        { value = val
+                                        , label = name
+                                        , level =
+                                            Dict.get name nonMaxSkills
+                                                |> Maybe.map .level
+                                                |> Maybe.withDefault 1
+                                        , color = Maybe.withDefault Color.white <| Dict.get name colors
+                                        }
+                                    )
+                                    ttms
 
                             percentDoneChartData : List { value : Float, label : String, color : Color.Color }
                             percentDoneChartData =
@@ -255,7 +266,7 @@ maxProgressStats model =
         ( Just account, Just ehpRates ) ->
             let
                 allSkills =
-                    releasedSkills account.skills
+                    normalizedSkills account.skills
 
                 remainingExp : Int
                 remainingExp =
@@ -291,7 +302,7 @@ maxProgressStats model =
                                     }
                                 )
                             )
-                        |> Maybe.map (Dict.filter (\_ v -> v.experience >= 0))
+                        |> Maybe.map normalizedSkills
 
                 getRemainingLevels : Dict String { o | level : Int } -> Int
                 getRemainingLevels skills =
@@ -492,46 +503,10 @@ view model =
             [ section []
                 [ searchView model
                 , maxProgressView model
-                , newlyReleasedSkillsNoticeView model
                 ]
             ]
         , myFooter model
         ]
-
-
-newlyReleasedSkillsNoticeView : Model -> Html Msg
-newlyReleasedSkillsNoticeView model =
-    case model.accountInfo of
-        Just acc ->
-            let
-                skillsWithoutExp =
-                    acc.skills
-                        |> Dict.toList
-                        |> List.filter
-                            (\n ->
-                                Tuple.second n
-                                    |> .experience
-                                    |> (\a -> a < 0)
-                            )
-
-                skillNames =
-                    List.map Tuple.first skillsWithoutExp
-
-                hasSkillsWithoutRates =
-                    List.length skillsWithoutExp > 0
-
-                noticeMsg : List (Html Msg)
-                noticeMsg =
-                    List.map (\n -> h1 [] [ text (n ++ " is not yet included, as it is not yet released") ]) skillNames
-            in
-            if hasSkillsWithoutRates then
-                section [ class "w-full items-center text-center pt-12" ] (text "Note:" :: noticeMsg)
-
-            else
-                section [] []
-
-        _ ->
-            section [] []
 
 
 periodSelector : { a | period : Period } -> Html Msg

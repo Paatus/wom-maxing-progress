@@ -1,7 +1,7 @@
-module WOM.Utils exposing (getEHPRate, getProgressPercent, hasEhpRate, percentTowardsMax, releasedSkills, remainingExp, ttm)
+module WOM.Utils exposing (getEHPRate, getProgressPercent, hasEhpRate, normalizedSkills, percentTowardsMax, remainingExp, ttm)
 
 import Dict exposing (Dict)
-import Types exposing (Skills)
+import Types exposing (SkillInfo, Skills)
 import WOM.Data exposing (maxExp)
 import WOM.Types exposing (EHPRates)
 
@@ -51,9 +51,18 @@ getProgressPercent currentExp =
     ((currentExp |> toFloat) / (maxExp |> toFloat)) * 100
 
 
-releasedSkills : Skills -> Skills
-releasedSkills =
-    Dict.filter (\_ v -> v.experience >= 0)
+normalizedSkills : Skills -> Skills
+normalizedSkills =
+    let
+        norm : SkillInfo -> SkillInfo
+        norm s =
+            if s.experience < 0 then
+                { s | experience = 1 }
+
+            else
+                s
+    in
+    Dict.map (\_ v -> norm v)
 
 
 remainingExp : Dict String { r | level : Int, experience : Int } -> Int
